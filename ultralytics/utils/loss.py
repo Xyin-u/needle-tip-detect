@@ -311,12 +311,12 @@ class BCEDiceLoss(nn.Module):
             target = F.interpolate(target, (mask_h, mask_w), mode="nearest")
         return self.weight_bce * self.bce(pred, target) + self.weight_dice * self.dice(pred, target)
 
+
 # 添加ARobustLoss
 class ARobustLoss(nn.Module):
+    """Adaptive Robust Loss Reference: "Adaptive Robust Loss for Robust Learning", Barron, 2019.
     """
-    Adaptive Robust Loss
-    Reference: "Adaptive Robust Loss for Robust Learning", Barron, 2019
-    """
+
     def __init__(self, alpha=2.0, c=1.0):
         super().__init__()
         self.alpha = alpha
@@ -324,7 +324,7 @@ class ARobustLoss(nn.Module):
 
     def forward(self, pred, target):
         diff = target - pred
-        z_sq = (diff / self.c) ** 2   # (x/c)^2
+        z_sq = (diff / self.c) ** 2  # (x/c)^2
 
         alpha = self.alpha
         if alpha == 2.0:
@@ -334,6 +334,7 @@ class ARobustLoss(nn.Module):
             alpha_abs = torch.abs(alpha - 2)
             loss = (alpha_abs / alpha) * ((z_sq / alpha_abs + 1) ** (alpha / 2) - 1)
         return loss.mean()
+
 
 # 添加wing损失函数
 class WingLoss(nn.Module):
@@ -348,11 +349,10 @@ class WingLoss(nn.Module):
         diff = target - pred
         abs_diff = diff.abs()
         loss = torch.where(
-            abs_diff < self.omega,
-            self.omega * torch.log(1 + abs_diff / self.epsilon),
-            abs_diff - self.C
+            abs_diff < self.omega, self.omega * torch.log(1 + abs_diff / self.epsilon), abs_diff - self.C
         )
         return loss.mean()
+
 
 class KeypointLoss(nn.Module):
     """Criterion class for computing keypoint losses."""
@@ -370,7 +370,6 @@ class KeypointLoss(nn.Module):
     def forward(
         self, pred_kpts: torch.Tensor, gt_kpts: torch.Tensor, kpt_mask: torch.Tensor, area: torch.Tensor
     ) -> torch.Tensor:
-
         """Calculate keypoint loss factor and Euclidean distance loss for keypoints."""
         d = (pred_kpts[..., 0] - gt_kpts[..., 0]).pow(2) + (pred_kpts[..., 1] - gt_kpts[..., 1]).pow(2)
 
@@ -1448,4 +1447,3 @@ class SemanticSegmentationLoss(nn.Module):
 
         loss_items = torch.stack([ce_loss, dice_loss, aux_loss]).detach()
         return total * preds.shape[0], loss_items
-
