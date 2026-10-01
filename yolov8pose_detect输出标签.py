@@ -1,13 +1,15 @@
-from ultralytics import YOLO
-from copy import deepcopy
-import cv2
-from pathlib import Path
 import csv
+from copy import deepcopy
+from pathlib import Path
+
+import cv2
+
+from ultralytics import YOLO
 
 # ========== 配置参数 ==========
-model = YOLO(r'D:\xinyu\ultralytics-main\runs\pose\tip_pose\0526\weights\best.pt')
-input_dir = Path(r'C:\Users\tiger\Desktop\tip_dataset')
-output_dir = Path(r'D:\xinyu\ultralytics-main\runs\pose\imgsandlabels')
+model = YOLO(r"D:\xinyu\ultralytics-main\runs\pose\tip_pose\0526\weights\best.pt")
+input_dir = Path(r"C:\Users\tiger\Desktop\tip_dataset")
+output_dir = Path(r"D:\xinyu\ultralytics-main\runs\pose\imgsandlabels")
 conf_threshold = 0.5  # 置信度阈值，低于此值认为定位失败
 kpt_radius = 2  # 红点半径
 output_dir.mkdir(exist_ok=True)
@@ -16,8 +18,8 @@ output_dir.mkdir(exist_ok=True)
 csv_rows = []
 
 # 遍历所有图片
-for img_path in input_dir.glob('*.*'):
-    if img_path.suffix.lower() not in ['.jpg', '.jpeg', '.png']:
+for img_path in input_dir.glob("*.*"):
+    if img_path.suffix.lower() not in [".jpg", ".jpeg", ".png"]:
         continue
 
     # 预测
@@ -34,7 +36,7 @@ for img_path in input_dir.glob('*.*'):
     confidence = 0.0
 
     # ===== 保存 YOLO Pose 标签文件（.txt） =====
-    txt_path = input_dir / (img_path.stem + '.txt')  # 保存在图片同一目录
+    txt_path = input_dir / (img_path.stem + ".txt")  # 保存在图片同一目录
     if result.boxes is not None and result.keypoints is not None and len(result.boxes) > 0:
         # 取第一个检测结果（可根据需要遍历所有）
         box = result.boxes.data[0].cpu().numpy()  # [x1, y1, x2, y2, conf, cls]
@@ -61,13 +63,13 @@ for img_path in input_dir.glob('*.*'):
 
         # 组合成一行标签
         label_line = f"{class_id} {cx:.6f} {cy:.6f} {bw:.6f} {bh:.6f} " + " ".join(kpt_str_list)
-        with open(txt_path, 'w') as f:
+        with open(txt_path, "w") as f:
             f.write(label_line)
         print(f"标签已保存: {txt_path}")
     else:
         # 如果没有检测到任何目标，生成空文件（或跳过）
         # 这里选择生成空文件，表示该图无标注
-        with open(txt_path, 'w') as f:
+        with open(txt_path, "w") as f:
             pass
         print(f"未检测到目标，生成空标签: {txt_path}")
 
@@ -79,7 +81,7 @@ for img_path in input_dir.glob('*.*'):
             kpt = kpts[0]  # (x, y, conf)
         else:
             kpt = kpts  # 已经是 (3,)
-        x, y, conf = kpt.cpu().numpy() if hasattr(kpt, 'cpu') else kpt
+        x, y, conf = kpt.cpu().numpy() if hasattr(kpt, "cpu") else kpt
         tip_x, tip_y = int(x), int(y)
         confidence = float(conf)
 
@@ -89,21 +91,25 @@ for img_path in input_dir.glob('*.*'):
             # 画红色圆点
             cv2.circle(img, (tip_x, tip_y), kpt_radius, (0, 0, 255), -1)
             # 显示坐标文本
-            cv2.putText(img, f"({tip_x},{tip_y})", (tip_x + 5, tip_y - 5),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1, cv2.LINE_AA)
+            cv2.putText(
+                img,
+                f"({tip_x},{tip_y})",
+                (tip_x + 5, tip_y - 5),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.4,
+                (0, 0, 255),
+                1,
+                cv2.LINE_AA,
+            )
         else:
             print(f"  置信度不足 ({conf:.2f} < {conf_threshold})，不绘制")
     else:
-        print(f"  未检测到关键点")
+        print("  未检测到关键点")
 
     # 记录 CSV 行
-    csv_rows.append({
-        "文件名": img_path.name,
-        "x坐标": tip_x,
-        "y坐标": tip_y,
-        "定位成功": success,
-        "置信度": confidence
-    })
+    csv_rows.append(
+        {"文件名": img_path.name, "x坐标": tip_x, "y坐标": tip_y, "定位成功": success, "置信度": confidence}
+    )
 
     # 保存带标注的图片
     out_path = output_dir / img_path.name
@@ -113,7 +119,7 @@ for img_path in input_dir.glob('*.*'):
 # 写入 CSV 文件
 if csv_rows:
     csv_path = output_dir / "pin_tip_coords.csv"
-    with open(csv_path, 'w', newline='', encoding='utf-8-sig') as f:
+    with open(csv_path, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=["文件名", "x坐标", "y坐标", "定位成功", "置信度"])
         writer.writeheader()
         writer.writerows(csv_rows)
